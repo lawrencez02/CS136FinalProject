@@ -1,7 +1,7 @@
 CS 136 Final Project: Feedback-based Preference Inference in Dating Apps
 Charumathi Badrinath, Catherine Cui, Lawrence Zhang
 
-Model:
+Model: Charu
 - n=1000 AGENTS on each side
 - each agent has 
     - m=10 ATTRIBUTES, with q=5 OPTIONS for each attribute
@@ -15,15 +15,18 @@ Model:
     - total score is from 1 - 5, median score 3
 - their full preference profile is the other agents ranked in order of decreasing score
 
-ELO
+ELO: Lawrence
 - Assign each user the same baseline Elo (400, and Elos are non-negative)
-- There are x initial rounds
+- There are x=20 initial rounds
     - in each round, every agent A on each side is paired with a randomly chosen agent B from the other side. Agent B then swipes right or left on agent A. So, agent A's elo can be updated later, at the end of the round.
     - agents swipe right on the agent they are shown with some probability if that agent's score is above some threshold (with noise)
         - 1/(1 + e^{2(-s + 3))}) probability of swiping right where s is score from 1 - 5
     - at the end of the round, we update all agents' Elo scores
+- There are y=100 rounds
+    - do same thing as before except show people with closest ELO
+- Get full preference orderings 
 
-ELO update:  
+ELO update: Lawrence
 - x-1 is the number of total rounds before this current round
 - Expected score for player A: 1/(1 + 10^{(B - A)/400})
 - Expected score for player B: 1/(1 + 10^{(A - B)/400})
@@ -31,6 +34,8 @@ ELO update:
 - A's new ELO: A_new = A + 32(S_A - E_A)
 - Let S_B = 1 if B wins and S_B = 0 if B loses
 - B's new ELO: B_new = B + 32(S_B - E_B)
+
+Gale-Shapley: Catherine
 
 Simulation:
 - Generate all of the above randomness
