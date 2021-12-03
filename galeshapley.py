@@ -4,17 +4,18 @@ class GaleShapley:
         # number of each gender
         self.num = len(preferences) // 2
 
-        # create separate list for men and women 
+        # create separate preference dictionaries for men and women 
         self.men = dict(list(preferences.items())[:self.num])
         self.women = dict(list(preferences.items())[self.num:])
 
-        # create a dictionary of pointers for men and women
-        self.menp = [0 for man in self.men.keys()]
-        self.womenp = [self.num for woman in self.women.keys()]
+        # create a list of pointers for men and women
+        self.menp = [0] * self.num
+        self.womenp = [self.num] * self.num
 
-        # create a list for unmatched men and dict for matches
+        # create a list for unmatched men
         self.unmatchedmen = list(self.men.keys())
-        
+
+        # dict that maps agent id (man) to agent id (woman) that is a match
         self.matches = {}
 
     def match(self):
