@@ -8,7 +8,8 @@ class GaleShapley:
         self.men = dict(list(preferences.items())[:self.num])
         self.women = dict(list(preferences.items())[self.num:])
 
-        # create a list of pointers for men and women
+        # create a list of pointers for men (which 0-indexed preference woman they are about
+        # to propose to) and women (which 0-indexed preference man they are holding onto)
         self.menp = [0] * self.num
         self.womenp = [self.num] * self.num
 
@@ -18,16 +19,18 @@ class GaleShapley:
         # dict that maps agent id (man) to agent id (woman) that is a match
         self.matches = {}
 
+    # Runs boy-proposing Gale-Shapley and generates matches
     def match(self):
         while self.unmatchedmen:
             for man in self.unmatchedmen:
-                # person they're about to propose to 
-                wife = self.men[man][self.menp[man]]
-                self.accept(man, wife)
+                # woman that man is about to propose to 
+                woman = self.men[man][self.menp[man]]
+                self.accept(man, woman)
                 
         for man in self.men.keys():
             self.matches[man] = self.men[man][self.menp[man]-1]
-            
+
+    # Determines what happens when man proposes to woman       
     def accept(self, man, woman):
         new = self.women[woman].index(man)
         previous = self.womenp[woman-self.num]
