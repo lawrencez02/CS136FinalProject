@@ -58,13 +58,15 @@ class Agent:
 
 
 def generate_scores(agents):
-    for agent1 in agents:
-        for agent2 in agents:
-            score = sum([agent1.weights[i] * agent1.attribute_preferences[i][agent2.attributes[i]] for i in range(m)])
-            if agent1 != agent2:
-                agent1.scores[agent2.id] = score
-            else:
-                agent1.score = score
+    for i in range(2 * n):
+        other_side = range(n, 2 * n) if i < n else range(n)
+        for j in other_side:
+            # Generate weighted sum for agent i's score of agent j
+            score = sum([agents[i].weights[k] * agents[i].attribute_preferences[k][agents[j].attributes[k]] for k in range(m)])
+            agents[i].scores[agents[j].id] = score
+
+        # Generate agent i's score of him/herself
+        agents[i].score = sum([agents[i].weights[k] * agents[i].attribute_preferences[k][agents[i].attributes[k]] for k in range(m)])
 
 
 # Input: list of agents

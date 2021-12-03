@@ -35,6 +35,7 @@ class GaleShapley:
         new = self.women[woman].index(man)
         previous = self.womenp[woman-self.num]
 
+        # if new man proposing is better than the previous man this woman is holding onto, replace him!
         if new < previous:
             if previous < self.num:
                 self.unmatchedmen.append(self.women[woman][previous])
