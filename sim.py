@@ -1,8 +1,8 @@
 import random
-import galeshapley
+import galeshapley as gs
 from collections import defaultdict
 from numpy import random
-from math import exp, pow
+from math import exp
 
 # number of agents on each side
 n = 1000
@@ -12,8 +12,17 @@ m = 10
 x = 30
 # number of following systematic Elo rounds
 y = 70
-# roughly the global proportion of agents who have A...F as their most preferred setting of an attribute
+
+# options for each attribute for each agent
+attribute_values = ['A', 'B', 'C', 'D', 'F']
+# number of options for each attribute
+attribute_options = len(attribute_values)
+
+# TODO: how to make this more rigorous/less hardcoded/more random?
+# roughly the global proportion of agents who have A, ..., F 
+# respectively as their most preferred setting of an attribute
 global_preferences = [0.4, 0.3, 0.15, 0.1, 0.05]
+
 
 class Agent:
     def __init__(self, id_num):
@@ -21,9 +30,9 @@ class Agent:
         self.id = id_num
 
         # each agent has random attributes that can take each take on 5 values
-        self.attributes = [random.choice(['A', 'B', 'C', 'D', 'F']) for _ in range(m)]
+        self.attributes = [random.choice(attribute_values) for _ in range(m)]
 
-        # list of 10 dicts mapping 'A', 'B', 'C', 'D', 'F' to their respective point values
+        # list of 10 dicts mapping A, ..., F to their respective point values
         # for every attribute, A most likely to be the most preferred globally, and F is the least likely
         self.attribute_preferences = []
         self.generate_attribute_preferences()
@@ -32,27 +41,31 @@ class Agent:
         self.weights = [random.random() for _ in range(m)]
         self.weights = [x / sum(self.weights) for x in self.weights]
 
-        # dict mapping agent id to this agent's score for that agent - populated when generate_scores is called
+        # dict mapping agent id to this agent's score for that agent - populated in generate_scores
         self.scores = {}
         # agent's own score for him/herself
-        self.score = sum([self.weights[i] * self.attribute_preferences[i][self.attributes[i]] for i in range(m)])
+        self.score = 0
 
         # starting Elo of agent
         self.elo = 400
 
     def generate_attribute_preferences(self):
-        # loop through all attributes
-        for i in range(m):
-            attribute_preferences_list = list(random.choice(['A', 'B', 'C', 'D', 'F'], size=5, replace=False, p=global_preferences))
-            attribute_preferences_dict = {attribute_preferences_list[i]: 5 - i for i in range(len(attribute_preferences_list))}
+        for _ in range(m):
+            # generate attribute preference ordering correlated with global preferences
+            attribute_preferences_list = list(random.choice(attribute_values, size=attribute_options, replace=False, p=global_preferences))
+            attribute_preferences_dict = {attribute_preferences_list[i]: attribute_options - i for i in range(attribute_options)}
             self.attribute_preferences.append(attribute_preferences_dict)
+
 
 def generate_scores(agents):
     for agent1 in agents:
         for agent2 in agents:
-            if agent2 != agent1:
-                score = sum([agent1.weights[i] * agent1.attribute_preferences[i][agent2.attributes[i]] for i in range(m)])
+            score = sum([agent1.weights[i] * agent1.attribute_preferences[i][agent2.attributes[i]] for i in range(m)])
+            if agent1 != agent2:
                 agent1.scores[agent2.id] = score
+            else:
+                agent1.score = score
+
 
 # Input: list of agents
 # Output: dict that maps agent ids to true full preference profiles, which are lists of agent ids
@@ -63,6 +76,7 @@ def generate_true_preference_profile(agents):
         preference_profile[agent.id] = agent_ids_sorted_by_score
     return preference_profile
 
+
 # Input: list of agents
 # Output: dict that maps agent ids to estimated full preference profiles, which are lists of agent ids
 def elo(agents):
@@ -70,14 +84,14 @@ def elo(agents):
     seen = defaultdict(set)
 
     # x initial random Elo rounds and y systematic Elo rounds
-    for round in range(x + y):
+    for curr_round in range(x + y):
         # stores results of round (maps agent id to (win/loss, other agent's Elo))
         results = {}
 
         # every boy has his profile shown to a randomly chosen girl, and vice versa
         for curr_side, other_side in [(range(n), range(n, 2 * n)), (range(n, 2 * n), range(n))]:
             for i in curr_side:
-                if round < x:
+                if curr_round < x:
                     # randomly choose agent j that sees agent i's profile if in initial x random Elo rounds
                     j = random.choice(other_side)
                     while (j in seen[i]):
@@ -117,15 +131,19 @@ def main():
     generate_scores(agents)
     # Generate agents' true full preference profile 
     true_preference_profiles = generate_true_preference_profile(agents)
-    # Run boy-proposing Gale-Shapley
-    true_matches = galeshapley.GaleShapley(true_preference_profiles)
 
     # Run Elo-based rounds to generate estimated full preference profiles
     estimated_preference_profiles = elo(agents)
-    # Run boy-proposing Gale-Shapley
-    estimated_matches = galeshapley.GaleShapley(estimated_preference_profiles)
 
-    # TODO: compare true_matches and estimated_matches
+    # Compare results of boy-proposing GaleShapley on true preference profiles vs. estimated preference profiles
+    true_gs = gs.GaleShapley(true_preference_profiles)
+    true_gs.match()
+
+    estimated_gs = gs.GaleShapley(estimated_preference_profiles)
+    estimated_gs.match()
+
+    print(true_gs.matches)
+    print(estimated_gs.matches)
 
 
 if __name__ == '__main__':

@@ -1,19 +1,12 @@
-# import sim
-
-
-# Input: dict that maps agent ids to full preference profiles, which are lists of agent ids
-# Output: dict that maps agent ids to agent ids of their current match
-
-# male proposing 
-
 class GaleShapley:
+    # Input: dict that maps agent ids to full preference profiles, which are lists of agent ids
     def __init__(self, preferences):
-        # num of each gender
-        self.num = int(len(preferences)/2)
+        # number of each gender
+        self.num = len(preferences) // 2
 
         # create separate list for men and women 
-        self.men = dict(list(preferences.items())[:len(preferences)//2])
-        self.women = dict(list(preferences.items())[len(preferences)//2:])
+        self.men = dict(list(preferences.items())[:self.num])
+        self.women = dict(list(preferences.items())[self.num:])
 
         # create a dictionary of pointers for men and women
         self.menp = [0 for man in self.men.keys()]
@@ -45,11 +38,4 @@ class GaleShapley:
             self.unmatchedmen.remove(man)
         
         self.menp[man] += 1
-
-
-
-# gs = GaleShapley({0:[3, 4, 5], 1:[4, 3, 5], 2:[5, 3, 4], 3: [0, 2, 1], 4: [2, 0, 1], 5: [0, 2, 1]})
-# gs.match()
-
-# print(gs.matches)
 
