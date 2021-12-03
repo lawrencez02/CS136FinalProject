@@ -1,7 +1,7 @@
 import random
 import galeshapley
 from collections import defaultdict
-from math import exp, pow, abs
+from math import exp, pow
 
 # number of agents on each side
 n = 1000
