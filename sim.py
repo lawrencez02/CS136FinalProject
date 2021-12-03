@@ -67,7 +67,7 @@ def elo(agents):
                     while (j in seen[i]):
                         j = random.choice(other_side)
                 else:
-                    # choose the agent j that is closest in elo to agent i
+                    # choose the agent j that is closest in Elo to agent i if in y systematic Elo rounds
                     j = min([j for j in other_side if j not in seen[i]], key=lambda j: abs(agents[i].elo - agents[j].elo))
 
                 seen[i].add(j)
