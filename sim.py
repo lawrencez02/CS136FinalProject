@@ -1,12 +1,15 @@
 import random
 import galeshapley
 
-# Number of agents
+# number of agents
 n = 1000
-# Number of attributes per agent
+# number of attributes per agent
 m = 10
-# Agent id counter
-id_counter = 0
+
+# number of initial random elo rounds
+x = 20
+# number of following systematic elo rounds
+y = 100
 
 class Agent:
     def __init__(self, id_num):
@@ -17,21 +20,42 @@ class Agent:
         self.attribute_preferences = [[]]
 
         # list of 10 randomly generated weights that sum to 1
-        self.weights = [random.randint() for _ in range(m)]
-        total = sum(self.weights)
-        self.weights = [x / total for x in self.weights]
+        self.weights = [random.uniform(0, 1) for _ in range(m)]
+        self.weights = [x / sum(self.weights) for x in self.weights]
 
+        # unique id of agent
         self.id = id_num
+        # starting elo of agent
         self.elo = 400
 
-    
+# Input: list of agents
+# Output: dict that maps agent ids to true full preference profiles, which are lists of agent ids
+def generate_true_preference_profile(agents):
+    # TODO: Charu
+    pass
+
+# Input: list of agents
+# Output: dict that maps agent ids to estimated full preference profiles, which are lists of agent ids
+def elo(agents):
+    # TODO: Lawrence
+    pass
+
 
 def main():
-    # Simulation runs here
-    # Generate 2n agents
+    # Generate 2n agents: [0, n-1] boys, [n, 2n-1] girls
     agents = [Agent(i) for i in range(2 * n)]
-    
 
-main()
+    # Generate agents' true full preference profile 
+    # and call Gale-Shapley algorithm
+    true_preference_profiles = generate_true_preference_profile(agents)
+    true_matches = galeshapley.GaleShapley(true_preference_profiles)
+
+    # Run Elo-based rounds to generate estimated full preference profiles
+    estimated_preference_profiles = elo(agents)
+    estimated_matches = galeshapley.GaleShapley(estimated_preference_profiles)
+
+    # TODO: compare true_matches and estimated_matches
 
 
+if __name__ == '__main__':
+    main()
