@@ -18,7 +18,7 @@ class Agent:
         # each agent has random attributes that can take each take on 5 values
         self.attributes = [random.choice(['A', 'B', 'C', 'D', 'F']) for _ in range(m)]
 
-        # list of 10 lists with A, B, C, D, F in some order
+        # list of 10 dicts mapping 'A', 'B', 'C', 'D', 'F' to their respective point values
         # TODO: Charu
         self.attribute_preferences = [[]]
 
@@ -29,6 +29,8 @@ class Agent:
         # dict mapping agent id to this agent's score for that agent
         # TODO: Charu
         self.scores = {}
+        # agent's own score for him/herself
+        self.score = sum([self.weights[i] * self.attribute_preferences[i][self.attributes[i]] for i in range(m)])
 
         # unique id of agent
         self.id = id_num
