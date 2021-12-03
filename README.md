@@ -19,15 +19,14 @@ ELO: Lawrence
 - Assign each user the same baseline Elo (400, and Elos are non-negative)
 - There are x=20 initial rounds
     - in each round, every agent A on each side is paired with a randomly chosen agent B from the other side. Agent B then swipes right or left on agent A. So, agent A's elo can be updated later, at the end of the round.
-    - agents swipe right on the agent they are shown with some probability if that agent's score is above some threshold (with noise)
-        - 1/(1 + e^{2(-s + 3))}) probability of swiping right where s is score from 1 - 5
+    - agents swipe right on the agent they are shown with some probability
+        - 1/(1 + e^{-2(s - agent's own score))}) probability of swiping right where s is other agent's score from 1 - 5
     - at the end of the round, we update all agents' Elo scores
 - There are y=100 rounds
     - do same thing as before except show people with closest ELO
 - Get full preference orderings 
 
 ELO update: Lawrence
-- x-1 is the number of total rounds before this current round
 - Expected score for player A: 1/(1 + 10^{(B - A)/400})
 - Expected score for player B: 1/(1 + 10^{(A - B)/400})
 - Let S_A = 1 if A wins and S_A = 0 if A loses
