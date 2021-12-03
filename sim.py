@@ -75,7 +75,7 @@ def elo(agents):
         results = {}
 
         # every boy has his profile shown to a randomly chosen girl, and vice versa
-        for curr_side, other_side in [(range(n), range(n, 2 * n - 1)), (range(n, 2 * n - 1), range(n))]:
+        for curr_side, other_side in [(range(n), range(n, 2 * n)), (range(n, 2 * n), range(n))]:
             for i in curr_side:
                 if round < x:
                     # randomly choose agent j that sees agent i's profile if in initial x random Elo rounds
