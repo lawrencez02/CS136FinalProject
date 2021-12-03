@@ -1,7 +1,7 @@
 import random
 import galeshapley
 from collections import defaultdict
-from math import exp, pow
+from math import exp, pow, abs
 
 # number of agents on each side
 n = 1000
@@ -9,9 +9,9 @@ n = 1000
 m = 10
 
 # number of initial random Elo rounds
-x = 20
+x = 30
 # number of following systematic Elo rounds
-y = 100
+y = 70
 
 
 class Agent:
@@ -53,18 +53,23 @@ def elo(agents):
     # ensure each agent paired with different agent every round
     seen = defaultdict(set)
 
-    # initial random Elo rounds
-    for _ in range(x):
+    # x initial random Elo rounds and y systematic Elo rounds
+    for round in range(x + y):
         # stores results of round (maps agent id to (win/loss, other agent's Elo))
         results = {}
 
         # every boy has his profile shown to a randomly chosen girl, and vice versa
         for curr_side, other_side in [(range(n), range(n, 2 * n - 1)), (range(n, 2 * n - 1), range(n))]:
             for i in curr_side:
-                # randomly choose agent j that sees agent i's profile
-                j = random.choice(other_side)
-                while (j in seen[i]):
+                if round < x:
+                    # randomly choose agent j that sees agent i's profile if in initial x random Elo rounds
                     j = random.choice(other_side)
+                    while (j in seen[i]):
+                        j = random.choice(other_side)
+                else:
+                    # choose the agent j that is closest in elo to agent i
+                    j = min([j for j in other_side if j not in seen[i]], key=lambda j: abs(agents[i].elo - agents[j].elo))
+
                 seen[i].add(j)
 
                 if random.random() <= 1 / (1 + exp(-2 * (agents[j].scores[i] - agents[j].score))):
@@ -79,9 +84,14 @@ def elo(agents):
             expected_score_i = 1 / (1 + pow(10, ((results[i][1] - agents[i].elo) / 400)))
             agents[i].elo += 32 * (int(results[i][0]) - expected_score_i)
 
-    # following systematic Elo rounds
-    # for _ in range(y):
+    # generate estimated full preference profiles based on Elos
+    estimated_preference_profiles = {}
+    for i in range(2 * n):
+        possible_matches = list(range(n, 2 * n)) if i < n else list(range(n))
+        # agent i prefers the agents who have the closest Elo to him/her
+        estimated_preference_profiles[i] = sorted(possible_matches, key=lambda j: abs(agents[i].elo - agents[j].elo))
 
+    return estimated_preference_profiles
 
 
 def main():
