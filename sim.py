@@ -1,7 +1,11 @@
+# CS 136 Final Project
+# Charumathi Badrinath, Catherine Cui, Lawrence Zhang
+# Note: Python 3.6+ required
+
 import random
 import galeshapley as gs
 from collections import defaultdict
-from numpy import random
+from numpy import random as rand
 from math import exp
 
 # number of agents on each side
@@ -18,10 +22,9 @@ attribute_values = ['A', 'B', 'C', 'D', 'F']
 # number of options for each attribute
 attribute_options = len(attribute_values)
 
-# TODO: how to make this more rigorous/less hardcoded/more random?
 # roughly the global proportion of agents who have A, ..., F 
 # respectively as their most preferred setting of an attribute
-global_preferences = [0.4, 0.3, 0.15, 0.1, 0.05]
+global_preferences = [5/15, 4/15, 3/15, 2/15, 1/15]
 
 
 class Agent:
@@ -52,7 +55,7 @@ class Agent:
     def generate_attribute_preferences(self):
         for _ in range(m):
             # generate attribute preference ordering correlated with global preferences
-            attribute_preferences_list = list(random.choice(attribute_values, size=attribute_options, replace=False, p=global_preferences))
+            attribute_preferences_list = list(rand.choice(attribute_values, size=attribute_options, replace=False, p=global_preferences))
             attribute_preferences_dict = {attribute_preferences_list[i]: attribute_options - i for i in range(attribute_options)}
             self.attribute_preferences.append(attribute_preferences_dict)
 
@@ -126,7 +129,31 @@ def elo(agents):
     return estimated_preference_profiles
 
 
+# Input: a dict that maps agent id (man) to agent id (woman) that is a match,
+# and a dict mapping agent id to the true full preference profile of that agent
+# Output: number of blocking pairs in the given matching
+def blocking_pairs(matching, true_preferences):
+    blocking_pairs = 0 
+    # check all pairs of men and women
+    for i in range(n):
+        for j in range(n, 2 * n):
+            # if this man and woman aren't already matched together
+            if matching[i] != j:
+                man_curr_match = matching[i]
+                woman_curr_match = next((k for k, v in matching.items() if v == j), None)
+                # if they both prefer each other more than their current matches
+                if true_preferences[i].index(man_curr_match) > true_preferences[i].index(j):
+                    if true_preferences[j].index(woman_curr_match) > true_preferences[j].index(i):
+                        blocking_pairs += 1
+
+    return blocking_pairs
+
+
 def main():
+    # Seed the number generators
+    random.seed(783387355)
+    rand.seed(783387355)
+
     # Generate 2n agents: [0, n-1] boys, [n, 2n-1] girls
     agents = [Agent(i) for i in range(2 * n)]
     # Generate each agent's score for every other agent
@@ -144,8 +171,6 @@ def main():
     estimated_gs = gs.GaleShapley(estimated_preference_profiles)
     estimated_gs.match()
 
-    print(true_gs.matches)
-    print(estimated_gs.matches)
 
 
 if __name__ == '__main__':
