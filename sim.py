@@ -6,7 +6,7 @@ import random
 import statistics
 import galeshapley as gs
 from collections import defaultdict
-from numpy import random as rand
+import numpy
 from math import exp
 
 # number of trials to run
@@ -21,6 +21,9 @@ x = 30
 # number of following systematic Elo rounds
 y = 70
 
+# starting elo for agents
+starting_elo = 400
+
 # options for each attribute for each agent
 attribute_values = ['A', 'B', 'C', 'D', 'F']
 # number of options for each attribute
@@ -28,7 +31,7 @@ attribute_options = len(attribute_values)
 
 # roughly the global proportion of agents who have A, ..., F 
 # respectively as their most preferred setting of an attribute
-global_preferences = [5/15, 4/15, 3/15, 2/15, 1/15]
+global_preferences = [0.9, 0.09, 0.009, 0.0009, 0.0001]
 
 
 class Agent:
@@ -54,12 +57,12 @@ class Agent:
         self.score = 0
 
         # starting Elo of agent
-        self.elo = 400
+        self.elo = starting_elo
 
     def generate_attribute_preferences(self):
         for _ in range(m):
             # generate attribute preference ordering correlated with global preferences
-            attribute_preferences_list = list(rand.choice(attribute_values, size=attribute_options, replace=False, p=global_preferences))
+            attribute_preferences_list = list(numpy.random.choice(attribute_values, size=attribute_options, replace=False, p=global_preferences))
             attribute_preferences_dict = {attribute_preferences_list[i]: attribute_options - i for i in range(attribute_options)}
             self.attribute_preferences.append(attribute_preferences_dict)
 
@@ -117,7 +120,7 @@ def elo(agents):
                 else:
                     # agent j swipes left, so agent i "loses" against agent j
                     results[i] = (False, agents[j].elo)
-        
+
         # update Elos based on results of round
         for i in range(2 * n):
             expected_score_i = 1 / (1 + pow(10, ((results[i][1] - agents[i].elo) / 400)))
@@ -153,17 +156,20 @@ def blocking_pairs(matching, true_preferences):
     return blocking_pairs
 
 
-# Input: a dict that maps agent id (man) to agent id (woman) that is a match,
-# and a dict mapping agent id to the true full preference profile of that agent
+# Input: list of agents, a dict that maps agent id (man) to agent id (woman) that is a match,
+# a dict mapping agent id to the true full preference profile of that agent,
+# as well as a cutoff elo that agents must satisfy in order to be included
 # Output: average preference choice (1-indexed) that each man/woman got
-def happiness(matching, true_preferences):
+def happiness(agents, matching, true_preferences, cutoff, above):
     reverse_matching = dict(zip(matching.values(),matching.keys()))
 
     men, women = [], []
     for i in range(n):
-        men.append(true_preferences[i].index(matching[i]) + 1)
+        if (above and agents[i].elo >= cutoff) or (not above and agents[i].elo < cutoff):
+            men.append(true_preferences[i].index(matching[i]) + 1)
     for j in range(n, 2 * n):
-        women.append(true_preferences[j].index(reverse_matching[j]) + 1)
+        if (above and agents[j].elo >= cutoff) or (not above and agents[j].elo < cutoff):
+            women.append(true_preferences[j].index(reverse_matching[j]) + 1)
 
     return statistics.mean(men), statistics.mean(women)
 
@@ -179,19 +185,35 @@ def generate_random_matching():
 def main():
     # Seed the number generators
     random.seed(783387355)
-    rand.seed(783387355)
+    numpy.random.seed(783387355)
 
     # Store results of each trial (men/women happiness and number of blocking pairs)
-    num_blocking_pairs = [[], [], [], [], [], []] 
-    men_happiness = [[], [], [], [], [], []] 
-    women_happiness = [[], [], [], [], [], []] 
+    num_blocking_pairs = [[], [], []] 
+    men_happiness = [[], [], []] 
+    women_happiness = [[], [], []] 
+    # happiness of agents at or above a certain elo cutoff
+    attractive_men_happiness = [[], [], []]
+    attractive_women_happiness = [[], [], []]
+     # happiness of agents below a certain elo cutoff
+    unattractive_men_happiness = [[], [], []]
+    unattractive_women_happiness = [[], [], []]
 
     # Helper function to store results of each trial
-    def store_results(i, matching, true_preferences):
-        num_blocking_pairs[i].append(blocking_pairs(matching, true_preferences))
-        men, women = happiness(matching, true_preferences)
-        men_happiness[i].append(men)
-        women_happiness[i].append(women)
+    def store_results(i, agents, matching, true_preferences, cutoff, above):
+        if cutoff == float('-inf'):
+            men, women = happiness(agents, matching, true_preferences, float('-inf'), True)
+            num_blocking_pairs[i].append(blocking_pairs(matching, true_preferences))
+            men_happiness[i].append(men)
+            women_happiness[i].append(women)
+        elif above:
+            men, women = happiness(agents, matching, true_preferences, cutoff, True)
+            attractive_men_happiness[i].append(men)
+            attractive_women_happiness[i].append(women)
+        else:
+            men, women = happiness(agents, matching, true_preferences, cutoff, False)
+            unattractive_men_happiness[i].append(men)
+            unattractive_women_happiness[i].append(women)
+
 
     for _ in range(trials):
         # Generate 2n agents: [0, n-1] boys, [n, 2n-1] girls
@@ -203,56 +225,38 @@ def main():
         true_preference_profiles = generate_true_preference_profile(agents)
         true_gs = gs.GaleShapley(true_preference_profiles)
         true_gs.match()
-        store_results(0, true_gs.matches, true_preference_profiles)
+        store_results(0, agents, true_gs.matches, true_preference_profiles, float('-inf'), True)
 
         # 1: Generate random matching
         random_matching = generate_random_matching()
-        store_results(1, random_matching, true_preference_profiles)
+        store_results(1, agents, random_matching, true_preference_profiles, float('-inf'), True)
 
         # 2: Generate standard Elo estimated preference profiles and matching
         elo_preference_profiles = elo(agents)
         elo_gs = gs.GaleShapley(elo_preference_profiles)
         elo_gs.match()
-        store_results(2, elo_gs.matches, true_preference_profiles)
+        store_results(2, agents, elo_gs.matches, true_preference_profiles, float('-inf'), True)
 
-        # 3: Generate matching using Elo, but with more rounds
-        global y
-        y *= 2
-        for agent in agents:
-            # Reset elos
-            agent.elo = 400
-        elo2_preference_profiles = elo(agents)
-        elo2_gs = gs.GaleShapley(elo2_preference_profiles)
-        elo2_gs.match()
-        y //= 2
-        store_results(3, elo2_gs.matches, true_preference_profiles)
+        elos = numpy.array([agent.elo for agent in agents])
+        above_cutoff = numpy.percentile(elos, 90)
+        below_cutoff = numpy.percentile(elos, 10)
 
-        # 4: Generate matching using Elo, but with more skewed global preferences
-        global global_preferences
-        global_preferences = [16/31, 8/31, 4/31, 2/31, 1/31]
-        for agent in agents:
-            agent.elo = 400
-        elo3_preference_profiles = elo(agents)
-        elo3_gs = gs.GaleShapley(elo3_preference_profiles)
-        elo3_gs.match()
-        global_preferences = [5/15, 4/15, 3/15, 2/15, 1/15]
-        store_results(4, elo3_gs.matches, true_preference_profiles)
+        store_results(0, agents, true_gs.matches, true_preference_profiles, above_cutoff, True)
+        store_results(1, agents, random_matching, true_preference_profiles, above_cutoff, True)
+        store_results(2, agents, elo_gs.matches, true_preference_profiles, above_cutoff, True)
 
-        # 5: Generate matching using Elo, but with more attributes per agent
-        global m
-        m *= 2
-        for agent in agents:
-            agent.elo = 400
-        elo4_preference_profiles = elo(agents)
-        elo4_gs = gs.GaleShapley(elo4_preference_profiles)
-        elo4_gs.match()
-        m /= 2
-        store_results(5, elo4_gs.matches, true_preference_profiles)
+        store_results(0, agents, true_gs.matches, true_preference_profiles, below_cutoff, False)
+        store_results(1, agents, random_matching, true_preference_profiles, below_cutoff, False)
+        store_results(2, agents, elo_gs.matches, true_preference_profiles, below_cutoff, False)
 
     # Compute statistics
     print(num_blocking_pairs)
     print(men_happiness)
     print(women_happiness)
+    print(attractive_men_happiness)
+    print(attractive_women_happiness)
+    print(unattractive_men_happiness)
+    print(unattractive_women_happiness)
 
 
 if __name__ == '__main__':
