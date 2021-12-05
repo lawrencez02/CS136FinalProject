@@ -31,7 +31,7 @@ attribute_options = len(attribute_values)
 
 # roughly the global proportion of agents who have A, ..., F 
 # respectively as their most preferred setting of an attribute
-global_preferences = [0.9, 0.09, 0.009, 0.0009, 0.0001]
+global_preferences = [5/15, 4/15, 3/15, 2/15, 1/15]
 
 
 class Agent:
@@ -237,10 +237,12 @@ def main():
         elo_gs.match()
         store_results(2, agents, elo_gs.matches, true_preference_profiles, float('-inf'), True)
 
+        # Compute percentiles of Elo distribution
         elos = numpy.array([agent.elo for agent in agents])
-        above_cutoff = numpy.percentile(elos, 90)
-        below_cutoff = numpy.percentile(elos, 10)
+        above_cutoff = numpy.percentile(elos, 75)
+        below_cutoff = numpy.percentile(elos, 25)
 
+        # Store results for happiness of various segments of the population
         store_results(0, agents, true_gs.matches, true_preference_profiles, above_cutoff, True)
         store_results(1, agents, random_matching, true_preference_profiles, above_cutoff, True)
         store_results(2, agents, elo_gs.matches, true_preference_profiles, above_cutoff, True)
@@ -249,7 +251,7 @@ def main():
         store_results(1, agents, random_matching, true_preference_profiles, below_cutoff, False)
         store_results(2, agents, elo_gs.matches, true_preference_profiles, below_cutoff, False)
 
-    # Compute statistics
+    # View statistics
     print(num_blocking_pairs)
     print(men_happiness)
     print(women_happiness)
