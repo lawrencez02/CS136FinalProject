@@ -3,6 +3,7 @@
 # Note: Python 3.6+ required
 
 import random
+import statistics
 import galeshapley as gs
 from collections import defaultdict
 from numpy import random as rand
@@ -154,7 +155,7 @@ def blocking_pairs(matching, true_preferences):
 
 # Input: a dict that maps agent id (man) to agent id (woman) that is a match,
 # and a dict mapping agent id to the true full preference profile of that agent
-# Output: lists of which preference choice (1-indexed) that each man/woman got
+# Output: average preference choice (1-indexed) that each man/woman got
 def happiness(matching, true_preferences):
     reverse_matching = dict(zip(matching.values(),matching.keys()))
 
@@ -164,7 +165,7 @@ def happiness(matching, true_preferences):
     for j in range(n, 2 * n):
         women.append(true_preferences[j].index(reverse_matching[j]) + 1)
 
-    return men, women
+    return statistics.mean(men), statistics.mean(women)
 
 
 # Output: random matching (dict mapping agent id (man) to agent id (woman))
@@ -180,22 +181,75 @@ def main():
     random.seed(783387355)
     rand.seed(783387355)
 
-    # Generate 2n agents: [0, n-1] boys, [n, 2n-1] girls
-    agents = [Agent(i) for i in range(2 * n)]
-    # Generate each agent's score for every other agent
-    generate_scores(agents)
-    # Generate agents' true full preference profile 
-    true_preference_profiles = generate_true_preference_profile(agents)
+    # Store results of each trial (men/women happiness and number of blocking pairs)
+    blocking_pairs = [[], [], [], [], [], []] 
+    men_happiness = [[], [], [], [], [], []] 
+    women_happiness = [[], [], [], [], [], []] 
 
-    # Run Elo-based rounds to generate estimated full preference profiles
-    estimated_preference_profiles = elo(agents)
+    # Helper function to store results of each trial
+    def store_results(i, matching, true_preferences):
+        blocking_pairs[i].append(blocking_pairs(matching, true_preferences))
+        men, women = happiness(matching, true_preferences)
+        men_happiness[i].append(men)
+        women_happiness[i].append(women)
 
-    # Compare results of boy-proposing GaleShapley on true preference profiles vs. estimated preference profiles
-    true_gs = gs.GaleShapley(true_preference_profiles)
-    true_gs.match()
+    for _ in range(trials):
+        # Generate 2n agents: [0, n-1] boys, [n, 2n-1] girls
+        agents = [Agent(i) for i in range(2 * n)]
+        # Generate each agent's score for every other agent
+        generate_scores(agents)
 
-    estimated_gs = gs.GaleShapley(estimated_preference_profiles)
-    estimated_gs.match()
+        # 0: Generate agents' true full preference profiles and true matching
+        true_preference_profiles = generate_true_preference_profile(agents)
+        true_gs = gs.GaleShapley(true_preference_profiles)
+        true_gs.match()
+        store_results(0, true_gs.matches, true_preference_profiles)
+
+        # 1: Generate random matching
+        random_matching = random_matching()
+        store_results(1, random_matching, true_preference_profiles)
+
+        # 2: Generate standard Elo estimated preference profiles and matching
+        elo_preference_profiles = elo(agents)
+        elo_gs = gs.GaleShapley(elo_preference_profiles)
+        elo_gs.match()
+        store_results(2, elo_gs.matches, true_preference_profiles)
+
+        # 3: Generate matching using Elo, but with more rounds
+        global y
+        y *= 2
+        for agent in agents:
+            # Reset elos
+            agent.elo = 400
+        elo2_preference_profiles = elo(agents)
+        elo2_gs = gs.GaleShapley(elo2_preference_profiles)
+        elo2_gs.match()
+        y /= 2
+        store_results(3, elo2_gs.matches, true_preference_profiles)
+
+        # 4: Generate matching using Elo, but with more skewed global preferences
+        global global_preferences
+        global_preferences = [16/31, 8/31, 4/31, 2/31, 1/31]
+        for agent in agents:
+            agent.elo = 400
+        elo3_preference_profiles = elo(agents)
+        elo3_gs = gs.GaleShapley(elo3_preference_profiles)
+        elo3_gs.match()
+        global_preferences = [5/15, 4/15, 3/15, 2/15, 1/15]
+        store_results(4, elo3_gs.matches, true_preference_profiles)
+
+        # 5: Generate matching using Elo, but with more attributes per agent
+        global m
+        m *= 2
+        for agent in agents:
+            agent.elo = 400
+        elo4_preference_profiles = elo(agents)
+        elo4_gs = gs.GaleShapley(elo4_preference_profiles)
+        elo4_gs.match()
+        m /= 2
+        store_results(5, elo4_gs.matches, true_preference_profiles)
+
+    # Compute statistics
 
 
 
