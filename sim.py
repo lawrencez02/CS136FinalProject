@@ -3,6 +3,7 @@
 # Note: Python 3.6+ required
 
 import random
+import statistics as stat
 import galeshapley as gs
 from collections import defaultdict
 from numpy import random as rand
@@ -134,19 +135,34 @@ def elo(agents):
 # Output: number of blocking pairs in the given matching
 def blocking_pairs(matching, true_preferences):
     blocking_pairs = 0 
+    # maps agent id (woman) to agent id (man) that is a match
+    reverse_matching = dict(zip(matching.values(),matching.keys()))
     # check all pairs of men and women
     for i in range(n):
         for j in range(n, 2 * n):
             # if this man and woman aren't already matched together
             if matching[i] != j:
-                man_curr_match = matching[i]
-                woman_curr_match = next((k for k, v in matching.items() if v == j), None)
                 # if they both prefer each other more than their current matches
-                if true_preferences[i].index(man_curr_match) > true_preferences[i].index(j):
-                    if true_preferences[j].index(woman_curr_match) > true_preferences[j].index(i):
+                if true_preferences[i].index(matching[i]) > true_preferences[i].index(j):
+                    if true_preferences[j].index(reverse_matching[j]) > true_preferences[j].index(i):
                         blocking_pairs += 1
 
     return blocking_pairs
+
+
+# Input: a dict that maps agent id (man) to agent id (woman) that is a match,
+# and a dict mapping agent id to the true full preference profile of that agent
+# Output: lists of which preference choice (1-indexed) that each man/woman got
+def happiness(matching, true_preferences):
+    reverse_matching = dict(zip(matching.values(),matching.keys()))
+
+    men, women = [], []
+    for i in range(n):
+        men.append(true_preferences[i].index(matching[i]) + 1)
+    for j in range(n, 2 * n):
+        women.append(true_preferences[j].index(reverse_matching[j]) + 1)
+
+    return men, women
 
 
 def main():
