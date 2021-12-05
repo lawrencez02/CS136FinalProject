@@ -10,7 +10,7 @@ from numpy import random as rand
 from math import exp
 
 # number of trials to run
-trials = 100
+trials = 1
 
 # number of agents on each side
 n = 1000
@@ -169,7 +169,7 @@ def happiness(matching, true_preferences):
 
 
 # Output: random matching (dict mapping agent id (man) to agent id (woman))
-def random_matching():
+def generate_random_matching():
     men, women = list(range(n)), list(range(n, 2 * n))
     random.shuffle(men)
     random.shuffle(women)
@@ -182,13 +182,13 @@ def main():
     rand.seed(783387355)
 
     # Store results of each trial (men/women happiness and number of blocking pairs)
-    blocking_pairs = [[], [], [], [], [], []] 
+    num_blocking_pairs = [[], [], [], [], [], []] 
     men_happiness = [[], [], [], [], [], []] 
     women_happiness = [[], [], [], [], [], []] 
 
     # Helper function to store results of each trial
     def store_results(i, matching, true_preferences):
-        blocking_pairs[i].append(blocking_pairs(matching, true_preferences))
+        num_blocking_pairs[i].append(blocking_pairs(matching, true_preferences))
         men, women = happiness(matching, true_preferences)
         men_happiness[i].append(men)
         women_happiness[i].append(women)
@@ -206,7 +206,7 @@ def main():
         store_results(0, true_gs.matches, true_preference_profiles)
 
         # 1: Generate random matching
-        random_matching = random_matching()
+        random_matching = generate_random_matching()
         store_results(1, random_matching, true_preference_profiles)
 
         # 2: Generate standard Elo estimated preference profiles and matching
@@ -224,7 +224,7 @@ def main():
         elo2_preference_profiles = elo(agents)
         elo2_gs = gs.GaleShapley(elo2_preference_profiles)
         elo2_gs.match()
-        y /= 2
+        y //= 2
         store_results(3, elo2_gs.matches, true_preference_profiles)
 
         # 4: Generate matching using Elo, but with more skewed global preferences
@@ -250,7 +250,9 @@ def main():
         store_results(5, elo4_gs.matches, true_preference_profiles)
 
     # Compute statistics
-
+    print(num_blocking_pairs)
+    print(men_happiness)
+    print(women_happiness)
 
 
 if __name__ == '__main__':
