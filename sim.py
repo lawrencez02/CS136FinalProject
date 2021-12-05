@@ -3,11 +3,13 @@
 # Note: Python 3.6+ required
 
 import random
-import statistics as stat
 import galeshapley as gs
 from collections import defaultdict
 from numpy import random as rand
 from math import exp
+
+# number of trials to run
+trials = 100
 
 # number of agents on each side
 n = 1000
@@ -163,6 +165,14 @@ def happiness(matching, true_preferences):
         women.append(true_preferences[j].index(reverse_matching[j]) + 1)
 
     return men, women
+
+
+# Output: random matching (dict mapping agent id (man) to agent id (woman))
+def random_matching():
+    men, women = list(range(n)), list(range(n, 2 * n))
+    random.shuffle(men)
+    random.shuffle(women)
+    return {man: woman for man, woman in zip(men, women)}
 
 
 def main():
