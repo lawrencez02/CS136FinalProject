@@ -4,6 +4,8 @@
 
 import random
 import statistics
+
+from numpy.lib.function_base import diff
 import galeshapley as gs
 from collections import defaultdict
 import numpy
@@ -13,13 +15,13 @@ from math import exp
 trials = 1
 
 # number of agents on each side
-n = 1000
+n = 5000
 # number of attributes per agent
 m = 10
 # number of initial random Elo rounds
-x = 30
+x = 10
 # number of following systematic Elo rounds
-y = 70
+y = 20
 
 # starting elo for agents
 starting_elo = 400
@@ -136,6 +138,14 @@ def elo(agents):
     return estimated_preference_profiles
 
 
+# Output: random matching (dict mapping agent id (man) to agent id (woman))
+def generate_random_matching():
+    men, women = list(range(n)), list(range(n, 2 * n))
+    random.shuffle(men)
+    random.shuffle(women)
+    return {man: woman for man, woman in zip(men, women)}
+
+
 # Input: a dict that maps agent id (man) to agent id (woman) that is a match,
 # and a dict mapping agent id to the true full preference profile of that agent
 # Output: number of blocking pairs in the given matching
@@ -155,31 +165,32 @@ def blocking_pairs(matching, true_preferences):
 
     return blocking_pairs
 
+# Input: list of agents and a dict that maps agent id (man) to agent id (woman) that is a match
+# Output: average Elo difference between matched pairs
+def elo_diff(agents, matching):
+    diff = 0
+    for i in matching:
+        diff += abs(agents[i].elo - agents[matching[i]].elo)
+
+    return diff / n
+
 
 # Input: list of agents, a dict that maps agent id (man) to agent id (woman) that is a match,
 # a dict mapping agent id to the true full preference profile of that agent,
-# as well as a cutoff elo that agents must satisfy in order to be included
+# as well as cutoff elos that agents must satisfy in order to be included
 # Output: average preference choice (1-indexed) that each man/woman got
-def happiness(agents, matching, true_preferences, cutoff, above):
+def happiness(agents, matching, true_preferences, men_cutoff, women_cutoff, above):
     reverse_matching = dict(zip(matching.values(),matching.keys()))
 
     men, women = [], []
     for i in range(n):
-        if (above and agents[i].elo >= cutoff) or (not above and agents[i].elo < cutoff):
+        if (above and agents[i].elo >= men_cutoff) or (not above and agents[i].elo < men_cutoff):
             men.append(true_preferences[i].index(matching[i]) + 1)
     for j in range(n, 2 * n):
-        if (above and agents[j].elo >= cutoff) or (not above and agents[j].elo < cutoff):
+        if (above and agents[j].elo >= women_cutoff) or (not above and agents[j].elo < women_cutoff):
             women.append(true_preferences[j].index(reverse_matching[j]) + 1)
 
     return statistics.mean(men), statistics.mean(women)
-
-
-# Output: random matching (dict mapping agent id (man) to agent id (woman))
-def generate_random_matching():
-    men, women = list(range(n)), list(range(n, 2 * n))
-    random.shuffle(men)
-    random.shuffle(women)
-    return {man: woman for man, woman in zip(men, women)}
 
 
 def main():
@@ -187,32 +198,51 @@ def main():
     random.seed(783387355)
     numpy.random.seed(783387355)
 
-    # Store results of each trial (men/women happiness and number of blocking pairs)
-    num_blocking_pairs = [[], [], []] 
-    men_happiness = [[], [], []] 
-    women_happiness = [[], [], []] 
-    # happiness of agents at or above a certain elo cutoff
-    attractive_men_happiness = [[], [], []]
-    attractive_women_happiness = [[], [], []]
-     # happiness of agents below a certain elo cutoff
-    unattractive_men_happiness = [[], [], []]
-    unattractive_women_happiness = [[], [], []]
+    # Store results of each trial
+
+    # Number of blocking pairs in generated matching
+    num_blocking_pairs = [[], [], []]
+    # Average happiness (lower is better) of men and women
+    avg_men_happiness = [[], [], []]
+    avg_women_happiness = [[], [], []]
+    # Average happiness (lower is better) of attractive men and women (above certain percentile Elo)
+    avg_attractive_men_happiness = [[], [], []]
+    avg_attractive_women_happiness = [[], [], []]
+    # Average happiness (lower is better) of unattractive men and women (below certain percentile Elo)
+    avg_unattractive_men_happiness = [[], [], []]
+    avg_unattractive_women_happiness = [[], [], []]
+    # Average Elo difference between matched pairs
+    avg_elo_diff = [[], [], []]
 
     # Helper function to store results of each trial
-    def store_results(i, agents, matching, true_preferences, cutoff, above):
-        if cutoff == float('-inf'):
-            men, women = happiness(agents, matching, true_preferences, float('-inf'), True)
-            num_blocking_pairs[i].append(blocking_pairs(matching, true_preferences))
-            men_happiness[i].append(men)
-            women_happiness[i].append(women)
-        elif above:
-            men, women = happiness(agents, matching, true_preferences, cutoff, True)
-            attractive_men_happiness[i].append(men)
-            attractive_women_happiness[i].append(women)
-        else:
-            men, women = happiness(agents, matching, true_preferences, cutoff, False)
-            unattractive_men_happiness[i].append(men)
-            unattractive_women_happiness[i].append(women)
+    def store_results(i, agents, matching, true_preference_profiles):
+        # Compute number of blocking pairs and average elo diff between matches
+        num_blocking_pairs[i].append(blocking_pairs(matching, true_preference_profiles))
+        avg_elo_diff[i].append(elo_diff(agents, matching))
+
+        # Compute average happiness of all men/women in matching
+        all_men, all_women = happiness(agents, matching, true_preference_profiles, float('-inf'), float('-inf'), True)
+        avg_men_happiness[i].append(all_men)
+        avg_women_happiness[i].append(all_women)
+
+        # Compute percentiles of Elo distribution
+        men_elos = numpy.array([agents[i].elo for i in range(n)])
+        women_elos = numpy.array([agents[j].elo for j in range(n, 2 * n)])
+
+        # Compute average happiness of top X>50 percentile or bottom Y<50 of men/women in matching
+        men_90, women_90 = happiness(agents, matching, true_preference_profiles, numpy.percentile(men_elos, 90), numpy.percentile(women_elos, 90), True)
+        men_75, women_75 = happiness(agents, matching, true_preference_profiles, numpy.percentile(men_elos, 75), numpy.percentile(women_elos, 75), True)
+        
+        men_10, women_10 = happiness(agents, matching, true_preference_profiles, numpy.percentile(men_elos, 10), numpy.percentile(women_elos, 10), False)
+        men_25, women_25 = happiness(agents, matching, true_preference_profiles, numpy.percentile(men_elos, 25), numpy.percentile(women_elos, 25), False)
+
+        # Store above happiness results
+        avg_attractive_men_happiness[i].append((men_90, men_75))
+        avg_attractive_women_happiness[i].append((women_90, women_75))
+
+        avg_unattractive_men_happiness[i].append((men_10, men_25))
+        avg_unattractive_women_happiness[i].append((women_10, women_25))
+
 
 
     for _ in range(trials):
@@ -221,44 +251,34 @@ def main():
         # Generate each agent's score for every other agent
         generate_scores(agents)
 
-        # 0: Generate agents' true full preference profiles and true matching
+        # Generate true preference profiles and Elo scores
         true_preference_profiles = generate_true_preference_profile(agents)
+        elo_preference_profiles = elo(agents)
+
+        # Matching 0: Generate matching based on true preference profiles
         true_gs = gs.GaleShapley(true_preference_profiles)
         true_gs.match()
-        store_results(0, agents, true_gs.matches, true_preference_profiles, float('-inf'), True)
+        store_results(0, agents, true_gs.matches, true_preference_profiles)
 
-        # 1: Generate random matching
+        # Matching 1: Generate random matching
         random_matching = generate_random_matching()
-        store_results(1, agents, random_matching, true_preference_profiles, float('-inf'), True)
+        store_results(1, agents, random_matching, true_preference_profiles)
 
-        # 2: Generate standard Elo estimated preference profiles and matching
-        elo_preference_profiles = elo(agents)
+        # Matching 2: Generate Elo-based matching
         elo_gs = gs.GaleShapley(elo_preference_profiles)
         elo_gs.match()
-        store_results(2, agents, elo_gs.matches, true_preference_profiles, float('-inf'), True)
+        store_results(2, agents, elo_gs.matches, true_preference_profiles)
 
-        # Compute percentiles of Elo distribution
-        elos = numpy.array([agent.elo for agent in agents])
-        above_cutoff = numpy.percentile(elos, 75)
-        below_cutoff = numpy.percentile(elos, 25)
-
-        # Store results for happiness of various segments of the population
-        store_results(0, agents, true_gs.matches, true_preference_profiles, above_cutoff, True)
-        store_results(1, agents, random_matching, true_preference_profiles, above_cutoff, True)
-        store_results(2, agents, elo_gs.matches, true_preference_profiles, above_cutoff, True)
-
-        store_results(0, agents, true_gs.matches, true_preference_profiles, below_cutoff, False)
-        store_results(1, agents, random_matching, true_preference_profiles, below_cutoff, False)
-        store_results(2, agents, elo_gs.matches, true_preference_profiles, below_cutoff, False)
 
     # View statistics
     print(num_blocking_pairs)
-    print(men_happiness)
-    print(women_happiness)
-    print(attractive_men_happiness)
-    print(attractive_women_happiness)
-    print(unattractive_men_happiness)
-    print(unattractive_women_happiness)
+    print(avg_men_happiness)
+    print(avg_women_happiness)
+    print(avg_attractive_men_happiness)
+    print(avg_attractive_women_happiness)
+    print(avg_unattractive_men_happiness)
+    print(avg_unattractive_women_happiness)
+    print(avg_elo_diff)
 
 
 if __name__ == '__main__':
