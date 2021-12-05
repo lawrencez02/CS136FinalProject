@@ -15,7 +15,7 @@ from math import exp
 trials = 1
 
 # number of agents on each side
-n = 5000
+n = 1000
 # number of attributes per agent
 m = 10
 # number of initial random Elo rounds
